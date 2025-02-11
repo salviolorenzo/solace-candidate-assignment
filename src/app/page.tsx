@@ -1,20 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Advocate } from "@/db/schema";
+import { useCallback, useEffect, useState } from "react";
+
+
 
 export default function Home() {
-  const [advocates, setAdvocates] = useState([]);
-  const [filteredAdvocates, setFilteredAdvocates] = useState([]);
+  const [advocates, setAdvocates] = useState<Advocate[]>([]);
+  const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log("fetching advocates...");
-    fetch("/api/advocates").then((response) => {
-      response.json().then((jsonResponse) => {
+  const fetchAdvocates = useCallback(() => {
+    const fetchData = async () => {
+
+      try {
+        const response = await fetch("/api/advocates");
+        const jsonResponse = await response.json();
+        
         setAdvocates(jsonResponse.data);
         setFilteredAdvocates(jsonResponse.data);
-      });
-    });
-  }, []);
+      } catch (error) {
+        setError("Error fetching advocates");
+      }
+    }
+
+    fetchData();
+  }, [])
+
+  useEffect(() => {
+    fetchAdvocates();
+  }, [fetchAdvocates]);
 
   const onChange = (e) => {
     const searchTerm = e.target.value;
