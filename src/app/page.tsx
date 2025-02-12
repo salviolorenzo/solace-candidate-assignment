@@ -3,8 +3,6 @@
 import { Advocate } from "@/db/schema";
 import { useCallback, useEffect, useState } from "react";
 
-
-
 export default function Home() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
   const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>([]);
@@ -13,52 +11,73 @@ export default function Home() {
 
   const fetchAdvocates = useCallback(() => {
     const fetchData = async () => {
-
       try {
         const response = await fetch("/api/advocates");
         const jsonResponse = await response.json();
-        
+
         setAdvocates(jsonResponse.data);
         setFilteredAdvocates(jsonResponse.data);
       } catch (error) {
         setError("Error fetching advocates");
       }
-    }
+    };
 
     fetchData();
-  }, [])
+  }, []);
 
-  const onSearchInputChange = useCallback(() => {(e: React.ChangeEvent<HTMLInputElement>) => {
-    const searchTerm = e.target.value;
+  const debouncedSetSearchInputValue = useCallback((value: string) => {
+    const timeout = setTimeout(() => {
+      setSearchInputValue(value);
+    }, 300);
 
-    setSearchInputValue(searchTerm);
-  }}, []);
+    return () => clearTimeout(timeout);
+  }, []);
 
-  const onClickReset = useCallback(() => {() => {
+  const onSearchInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const searchTerm = e.target.value?.toLowerCase();
+      setSearchInputValue(searchTerm);
+    },
+    []
+  );
+
+  const onClickReset = useCallback(() => {
     setSearchInputValue("");
     setFilteredAdvocates(advocates);
-  }}, [advocates]);
+  }, [advocates]);
 
+  const getSearchableFields = useCallback((advocate: Advocate) => {
+    return [
+      advocate.firstName,
+      advocate.lastName,
+      `${advocate.firstName} ${advocate.lastName}`,
+      `${advocate.lastName} ${advocate.firstName}`,
+      `${advocate.firstName} ${advocate.lastName}, ${advocate.degree}.`,
+      advocate.city,
+      advocate.degree,
+      advocate.yearsOfExperience.toString(),
+      advocate.phoneNumber.toString(),
+    ].map((field) => field.toLowerCase());
+  }, []);
 
   useEffect(() => {
     fetchAdvocates();
   }, [fetchAdvocates]);
 
   useEffect(() => {
-      const filteredAdvocates = advocates.filter((advocate) => {
-        return (
-          advocate.firstName.includes(searchInputValue) ||
-          advocate.lastName.includes(searchInputValue) ||
-          advocate.city.includes(searchInputValue) ||
-          advocate.degree.includes(searchInputValue) ||
-          advocate.specialties.includes(searchInputValue) ||
-          advocate.yearsOfExperience.toString().includes(searchInputValue)
-        );
+    const filteredAdvocates = advocates.filter((advocate) => {
+      const searchableFields = getSearchableFields(advocate);
+
+      return (
+        searchableFields.some((field) => field.startsWith(searchInputValue)) ||
+        advocate.specialties.some((specialty) =>
+          specialty.toLowerCase().includes(searchInputValue)
+        )
+      );
     });
 
     setFilteredAdvocates(filteredAdvocates);
-  }, [searchInputValue, advocates])
-
+  }, [searchInputValue, advocates, getSearchableFields]);
 
   return (
     <main style={{ margin: "24px" }}>
@@ -70,7 +89,11 @@ export default function Home() {
         <p>
           Searching for: <span id="search-term"></span>
         </p>
-        <input style={{ border: "1px solid black" }} onChange={onSearchInputChange} />
+        <input
+          style={{ border: "1px solid black" }}
+          onChange={onSearchInputChange}
+          value={searchInputValue}
+        />
         <button onClick={onClickReset}>Reset Search</button>
       </div>
       <br />
