@@ -1,45 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Advocate } from "@/db/schema";
+import { useCallback, useEffect, useState } from "react";
 
 export default function Home() {
-  const [advocates, setAdvocates] = useState([]);
-  const [filteredAdvocates, setFilteredAdvocates] = useState([]);
+  const [advocates, setAdvocates] = useState<Advocate[]>([]);
+  const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>([]);
+  const [searchInputValue, setSearchInputValue] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log("fetching advocates...");
-    fetch("/api/advocates").then((response) => {
-      response.json().then((jsonResponse) => {
+  const fetchAdvocates = useCallback(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch("/api/advocates");
+        const jsonResponse = await response.json();
+
         setAdvocates(jsonResponse.data);
         setFilteredAdvocates(jsonResponse.data);
-      });
-    });
+      } catch (error) {
+        setError("Error fetching advocates");
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const onChange = (e) => {
-    const searchTerm = e.target.value;
+  const debouncedSetSearchInputValue = useCallback((value: string) => {
+    const timeout = setTimeout(() => {
+      setSearchInputValue(value);
+    }, 300);
 
-    document.getElementById("search-term").innerHTML = searchTerm;
+    return () => clearTimeout(timeout);
+  }, []);
 
-    console.log("filtering advocates...");
+  const onSearchInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const searchTerm = e.target.value?.toLowerCase();
+      setSearchInputValue(searchTerm);
+    },
+    []
+  );
+
+  const onClickReset = useCallback(() => {
+    setSearchInputValue("");
+    setFilteredAdvocates(advocates);
+  }, [advocates]);
+
+  const getSearchableFields = useCallback((advocate: Advocate) => {
+    return [
+      advocate.firstName,
+      advocate.lastName,
+      `${advocate.firstName} ${advocate.lastName}`,
+      `${advocate.lastName} ${advocate.firstName}`,
+      `${advocate.firstName} ${advocate.lastName}, ${advocate.degree}.`,
+      advocate.city,
+      advocate.degree,
+      advocate.yearsOfExperience.toString(),
+      advocate.phoneNumber.toString(),
+    ].map((field) => field.toLowerCase());
+  }, []);
+
+  useEffect(() => {
+    fetchAdvocates();
+  }, [fetchAdvocates]);
+
+  useEffect(() => {
     const filteredAdvocates = advocates.filter((advocate) => {
+      const searchableFields = getSearchableFields(advocate);
+
       return (
-        advocate.firstName.includes(searchTerm) ||
-        advocate.lastName.includes(searchTerm) ||
-        advocate.city.includes(searchTerm) ||
-        advocate.degree.includes(searchTerm) ||
-        advocate.specialties.includes(searchTerm) ||
-        advocate.yearsOfExperience.includes(searchTerm)
+        searchableFields.some((field) => field.startsWith(searchInputValue)) ||
+        advocate.specialties.some((specialty) =>
+          specialty.toLowerCase().includes(searchInputValue)
+        )
       );
     });
 
     setFilteredAdvocates(filteredAdvocates);
-  };
-
-  const onClick = () => {
-    console.log(advocates);
-    setFilteredAdvocates(advocates);
-  };
+  }, [searchInputValue, advocates, getSearchableFields]);
 
   return (
     <main style={{ margin: "24px" }}>
@@ -51,32 +89,38 @@ export default function Home() {
         <p>
           Searching for: <span id="search-term"></span>
         </p>
-        <input style={{ border: "1px solid black" }} onChange={onChange} />
-        <button onClick={onClick}>Reset Search</button>
+        <input
+          style={{ border: "1px solid black" }}
+          onChange={onSearchInputChange}
+          value={searchInputValue}
+        />
+        <button onClick={onClickReset}>Reset Search</button>
       </div>
       <br />
       <br />
       <table>
         <thead>
-          <th>First Name</th>
-          <th>Last Name</th>
-          <th>City</th>
-          <th>Degree</th>
-          <th>Specialties</th>
-          <th>Years of Experience</th>
-          <th>Phone Number</th>
+          <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>City</th>
+            <th>Degree</th>
+            <th>Specialties</th>
+            <th>Years of Experience</th>
+            <th>Phone Number</th>
+          </tr>
         </thead>
         <tbody>
-          {filteredAdvocates.map((advocate) => {
+          {filteredAdvocates.map((advocate, index) => {
             return (
-              <tr>
+              <tr key={index}>
                 <td>{advocate.firstName}</td>
                 <td>{advocate.lastName}</td>
                 <td>{advocate.city}</td>
                 <td>{advocate.degree}</td>
                 <td>
-                  {advocate.specialties.map((s) => (
-                    <div>{s}</div>
+                  {advocate.specialties.map((s, idx) => (
+                    <div key={idx}>{s}</div>
                   ))}
                 </td>
                 <td>{advocate.yearsOfExperience}</td>
