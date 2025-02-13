@@ -2,30 +2,35 @@
 
 import { Advocate } from "@/db/schema";
 import { useCallback, useEffect, useState } from "react";
-import { json } from "stream/consumers";
 import { formatPhoneNumber } from "./utils";
 
 export default function Home() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
   const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>([]);
   const [searchInputValue, setSearchInputValue] = useState<string>("");
+  const [page, setPage] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAdvocates = useCallback(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/advocates");
-        const jsonResponse = await response.json();
+  const fetchAdvocates = useCallback(
+    (pageNumber: number = 1, searchTerm: string = "") => {
+      const fetchData = async () => {
+        try {
+          const response = await fetch(
+            `/api/advocates?page=${pageNumber}&search=${searchTerm}`
+          );
+          const jsonResponse = await response.json();
 
-        setAdvocates(jsonResponse.data);
-        setFilteredAdvocates(jsonResponse.data);
-      } catch (error) {
-        setError("Error fetching advocates");
-      }
-    };
+          setAdvocates(jsonResponse.data);
+          setFilteredAdvocates(jsonResponse.data);
+        } catch (error) {
+          setError("Error fetching advocates");
+        }
+      };
 
-    fetchData();
-  }, []);
+      fetchData();
+    },
+    []
+  );
 
   const onSearchInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,43 +40,18 @@ export default function Home() {
     []
   );
 
+  const onClickSearch = useCallback(() => {
+    fetchAdvocates(page, searchInputValue);
+  }, [page, searchInputValue, fetchAdvocates]);
+
   const onClickReset = useCallback(() => {
     setSearchInputValue("");
-    setFilteredAdvocates(advocates);
-  }, [advocates]);
-
-  const getSearchableFields = useCallback((advocate: Advocate) => {
-    return [
-      advocate.firstName,
-      advocate.lastName,
-      `${advocate.firstName} ${advocate.lastName}`,
-      `${advocate.lastName} ${advocate.firstName}`,
-      `${advocate.firstName} ${advocate.lastName}, ${advocate.degree}.`,
-      advocate.city,
-      advocate.degree,
-      advocate.yearsOfExperience.toString(),
-      advocate.phoneNumber.toString(),
-    ].map((field) => field.toLowerCase());
-  }, []);
-
-  useEffect(() => {
     fetchAdvocates();
   }, [fetchAdvocates]);
 
   useEffect(() => {
-    const filteredAdvocates = advocates.filter((advocate) => {
-      const searchableFields = getSearchableFields(advocate);
-
-      return (
-        searchableFields.some((field) => field.startsWith(searchInputValue)) ||
-        advocate.specialties.some((specialty) =>
-          specialty.toLowerCase().includes(searchInputValue)
-        )
-      );
-    });
-
-    setFilteredAdvocates(filteredAdvocates);
-  }, [searchInputValue, advocates, getSearchableFields]);
+    fetchAdvocates();
+  }, [fetchAdvocates]);
 
   return (
     <main className="m-6">
@@ -79,7 +59,6 @@ export default function Home() {
         Solace Advocates
       </h1>
 
-      {/* Search Section */}
       <div className="mt-6">
         <p className="text-gray-700 font-medium">Search</p>
         <p className="text-sm text-gray-600">
@@ -95,6 +74,12 @@ export default function Home() {
             placeholder="Search advocates..."
           />
           <button
+            onClick={onClickSearch}
+            className="bg-[var(--primary-light)] text-[var(--primary)] px-4 py-2 rounded-md hover:bg-[var(--primary)] hover:text-white transition"
+          >
+            Search
+          </button>
+          <button
             onClick={onClickReset}
             className="bg-[var(--primary-light)] text-[var(--primary)] px-4 py-2 rounded-md hover:bg-[var(--primary)] hover:text-white transition"
           >
@@ -103,7 +88,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Table Wrapper for Scrolling */}
       <div className="mt-6 overflow-x-auto rounded-lg shadow-md hidden md:block">
         <table className="w-full border-collapse text-left text-sm text-gray-700">
           <thead className="bg-tertiary uppercase">
@@ -131,7 +115,7 @@ export default function Home() {
           </thead>
 
           <tbody className="divide-y divide-gray-200 bg-white">
-            {filteredAdvocates.map((advocate, index) => (
+            {filteredAdvocates?.map((advocate, index) => (
               <tr
                 className="hover:bg-gray-50 transition hidden md:table-row"
                 key={index}
@@ -161,8 +145,7 @@ export default function Home() {
           </tbody>
         </table>
       </div>
-      {/* Mobile View: Stacked Cards */}
-      {filteredAdvocates.map((advocate, index) => (
+      {filteredAdvocates?.map((advocate, index) => (
         <div key={index} className="md:hidden block">
           <div className="p-4 rounded-lg shadow-md my-4 bg-white">
             <p className="text-lg font-semibold text-gray-900">
