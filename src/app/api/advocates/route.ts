@@ -8,7 +8,7 @@ enum HttpStatus {
   INTERNAL_SERVER_ERROR = 500,
 }
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 10;
 
 export async function GET(request: Request): Promise<Response> {
   if (!db) {
@@ -23,6 +23,11 @@ export async function GET(request: Request): Promise<Response> {
     const page = searchParams
       ? new URLSearchParams(searchParams).get("page")
       : 1;
+
+    const pageSize = searchParams
+      ? new URLSearchParams(searchParams).get("pageSize")
+      : DEFAULT_PAGE_SIZE;
+
     const rawSearchTerm = searchParams
       ? new URLSearchParams(searchParams).get("search")
       : null;
@@ -51,9 +56,10 @@ export async function GET(request: Request): Promise<Response> {
 
 const getAdvocates = async (
   pageNumber: number,
-  searchTerm: string | null
+  searchTerm: string | null,
+  pageSize: number = DEFAULT_PAGE_SIZE
 ): Promise<Advocate[]> => {
-  const offset = (pageNumber - 1) * PAGE_SIZE;
+  const offset = (pageNumber - 1) * pageSize;
 
   if (!db) {
     throw new Error("Database not initialized");
@@ -79,7 +85,7 @@ const getAdvocates = async (
           )
         : undefined
     )
-    .limit(PAGE_SIZE)
+    .limit(pageSize)
     .offset(offset);
 };
 
