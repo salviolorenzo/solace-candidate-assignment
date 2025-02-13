@@ -210,7 +210,12 @@ export default function Home() {
                 </p>
                 <ul className="list-inside text-gray-600 text-sm">
                   {advocate.specialties.map((s, idx) => (
-                    <li key={idx}>{s}</li>
+                    <li
+                      key={idx}
+                      className="px-3 py-1 my-3 rounded-full text-xs font-medium bg-[var(--primary)] text-white"
+                    >
+                      {s}
+                    </li>
                   ))}
                 </ul>
               </div>
