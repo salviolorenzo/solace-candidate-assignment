@@ -2,6 +2,8 @@
 
 import { Advocate } from "@/db/schema";
 import { useCallback, useEffect, useState } from "react";
+import { json } from "stream/consumers";
+import { formatPhoneNumber } from "./utils";
 
 export default function Home() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
@@ -23,14 +25,6 @@ export default function Home() {
     };
 
     fetchData();
-  }, []);
-
-  const debouncedSetSearchInputValue = useCallback((value: string) => {
-    const timeout = setTimeout(() => {
-      setSearchInputValue(value);
-    }, 300);
-
-    return () => clearTimeout(timeout);
   }, []);
 
   const onSearchInputChange = useCallback(
@@ -80,56 +74,120 @@ export default function Home() {
   }, [searchInputValue, advocates, getSearchableFields]);
 
   return (
-    <main style={{ margin: "24px" }}>
-      <h1>Solace Advocates</h1>
-      <br />
-      <br />
-      <div>
-        <p>Search</p>
-        <p>
-          Searching for: <span id="search-term"></span>
+    <main className="m-6">
+      <h1 className="text-2xl font-semibold text-[var(--primary)]">
+        Solace Advocates
+      </h1>
+
+      {/* Search Section */}
+      <div className="mt-6">
+        <p className="text-gray-700 font-medium">Search</p>
+        <p className="text-sm text-gray-600">
+          Searching for:{" "}
+          <span id="search-term" className="font-semibold"></span>
         </p>
-        <input
-          style={{ border: "1px solid black" }}
-          onChange={onSearchInputChange}
-          value={searchInputValue}
-        />
-        <button onClick={onClickReset}>Reset Search</button>
+
+        <div className="mt-2 flex flex-col sm:flex-row gap-2">
+          <input
+            className="border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+            onChange={onSearchInputChange}
+            value={searchInputValue}
+            placeholder="Search advocates..."
+          />
+          <button
+            onClick={onClickReset}
+            className="bg-[var(--primary-light)] text-[var(--primary)] px-4 py-2 rounded-md hover:bg-[var(--primary)] hover:text-white transition"
+          >
+            Reset Search
+          </button>
+        </div>
       </div>
-      <br />
-      <br />
-      <table>
-        <thead>
-          <tr>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>City</th>
-            <th>Degree</th>
-            <th>Specialties</th>
-            <th>Years of Experience</th>
-            <th>Phone Number</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredAdvocates.map((advocate, index) => {
-            return (
-              <tr key={index}>
-                <td>{advocate.firstName}</td>
-                <td>{advocate.lastName}</td>
-                <td>{advocate.city}</td>
-                <td>{advocate.degree}</td>
-                <td>
-                  {advocate.specialties.map((s, idx) => (
-                    <div key={idx}>{s}</div>
-                  ))}
+
+      {/* Table Wrapper for Scrolling */}
+      <div className="mt-6 overflow-x-auto rounded-lg shadow-md hidden md:block">
+        <table className="w-full border-collapse text-left text-sm text-gray-700">
+          <thead className="bg-tertiary uppercase">
+            <tr>
+              <th className="px-4 py-3 border-b text-[var(--primary)]">
+                First Name
+              </th>
+              <th className="px-4 py-3 border-b text-[var(--primary)]">
+                Last Name
+              </th>
+              <th className="px-4 py-3 border-b text-[var(--primary)]">City</th>
+              <th className="px-4 py-3 border-b text-[var(--primary)]">
+                Degree
+              </th>
+              <th className="px-4 py-3 border-b text-[var(--primary)]">
+                Specialties
+              </th>
+              <th className="px-4 py-3 border-b text-[var(--primary)]">
+                Experience
+              </th>
+              <th className="px-4 py-3 border-b text-[var(--primary)]">
+                Phone
+              </th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {filteredAdvocates.map((advocate, index) => (
+              <tr
+                className="hover:bg-gray-50 transition hidden md:table-row"
+                key={index}
+              >
+                <td className="px-4 py-4">{advocate.firstName}</td>
+                <td className="px-4 py-4">{advocate.lastName}</td>
+                <td className="px-4 py-4">{advocate.city}</td>
+                <td className="px-4 py-4">{advocate.degree}</td>
+                <td className="px-4 py-4  max-w-[200px]">
+                  <div className="flex flex-wrap gap-2">
+                    {advocate.specialties.map((s, idx) => (
+                      <div
+                        key={idx}
+                        className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--primary)] text-white"
+                      >
+                        {s}
+                      </div>
+                    ))}
+                  </div>
                 </td>
-                <td>{advocate.yearsOfExperience}</td>
-                <td>{advocate.phoneNumber}</td>
+                <td className="px-4 py-4">{advocate.yearsOfExperience} yrs</td>
+                <td className="px-4 py-4">
+                  {formatPhoneNumber(advocate.phoneNumber)}
+                </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Mobile View: Stacked Cards */}
+      {filteredAdvocates.map((advocate, index) => (
+        <div key={index} className="md:hidden block">
+          <div className="p-4 rounded-lg shadow-md my-4 bg-white">
+            <p className="text-lg font-semibold text-gray-900">
+              {advocate.firstName} {advocate.lastName}
+            </p>
+            <p className="text-gray-700">{advocate.city}</p>
+            <p className="text-sm text-gray-600">Degree: {advocate.degree}</p>
+            <p className="text-sm text-gray-600">
+              Experience: {advocate.yearsOfExperience} yrs
+            </p>
+            <p className="text-sm text-gray-600">
+              Phone: {advocate.phoneNumber}
+            </p>
+
+            <div className="mt-2">
+              <p className="text-sm font-medium text-gray-700">Specialties:</p>
+              <ul className="list-inside text-gray-600 text-sm">
+                {advocate.specialties.map((s, idx) => (
+                  <li key={idx}>{s}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      ))}
     </main>
   );
 }
